@@ -1,0 +1,81 @@
+<html>
+  <title> Historic Word Probability Chart </title>
+  <style type="text/css">
+  .word-stats-word {
+    font-size: 14px;
+  }
+  .word-stats-rank {
+    font-size: 12px;
+  }
+
+  .word-group-brushed {
+    fill: red;
+    stroke: red;
+  }
+
+  .word-group-unbrushed {
+    fill: black;
+    stroke: black;
+  }  
+  
+  .point-brushed {
+    fill: black;
+    fill-opacity: 1;
+  }
+
+  .point-unbrushed {
+    fill: gray;
+    fill-opacity: .2;
+  }
+
+  .point-mouseoff {
+  }
+
+  .point-mouseon {
+    fill-opacity: 1;
+    fill: blue;
+    stroke: blue;
+  }
+
+  .point-hist-line {
+    stroke-dasharray: 5, 5
+    stroke: gray;
+  }
+
+  </style>
+  <head>
+    <script src="d3.v4.js"></script>
+    <script src="d.js"></script>
+    </head>
+  <body style="padding: 0; margin: 0">
+    <table>
+    <tr> <td> <div id="c"> </div> </td> <td>
+    <center>
+    <textarea id="data-regex" rows="1" cols="18"></textarea> <br>
+    <button id="change-lex" onclick="change_lex()"> Filter Lexicon </button> <br>
+    </center>
+    <ul id="ul-lexicon" style="width: 125px; height: 500px; overflow: auto"> </ul> 
+    </td> </tr>
+    <tr> <td>
+      <center>
+      <button id="rank-button" onclick="scale_by('rank')"> Graph by Ranks </button>
+      <button id="info-button" onclick="scale_by('info')"> Graph by -log Prob </button>
+      </center>
+    <div id="tl"></div>
+    </td> </tr>
+
+    <tr> <td>
+    <div id="tl-buttons">
+      <center>
+      <button id="tl-start" onclick="move_tl_slider(min_year)"> Move to Timeline Start </button>
+      <button id="tl-end" onclick="move_tl_slider(max_year)"> Move to Timelint End End </button>
+      </center>
+    </div>
+    </td> 
+    </tr>
+    </table>
+   <script src="main.js"></script>
+
+  </body>
+</html>
+  
