@@ -1,0 +1,282 @@
+<html>
+
+<head>
+	<title>
+	Segmental Information Simulation - Lexicon		
+	</title>
+</head>
+<body>
+<script src="d3.v4.min.js"></script>
+<script src="d3-legend.js"></script>
+<script src="lex.js"></script>
+
+Lexicon size: <input type="text" id="lex-size" size="12" value="300"> <br>
+Word Length: <input type="text" id="word-len" size="6" value="6"> <br>
+Symbol Types (irrelevant for uniform): <input type="text" id="nb-symbol" size="6" value="6"> <br>
+
+<div id="seg-info"></div>
+
+<script language="javascript">
+
+	var c = d3.select("#seg-info");
+
+	var x_off = 50;
+	var y_off = 25;
+
+	var desired_animation_length = 15000;
+	var seg_max = +document.getElementById("word-len").value + 2;
+
+	var c_svg = c.append("svg")
+		.attr("width", 500)
+		.attr("height", 500);
+
+	var x_axis_scale = d3.scaleLinear().domain([1,seg_max]).range([x_off, 500 - y_off]);
+	var y_axis_scale = d3.scaleLinear().domain([4,0]).range([x_off, 500 - y_off]);
+	var info_type_scale = d3.scaleOrdinal().domain(['Lexical','Positional']).range(['red', 'blue']);
+	
+		// x axis
+	c_svg.append("g")
+		.call(d3.axisBottom(x_axis_scale).ticks(seg_max))
+		.attr("transform", "translate(0," + (500 - y_off) + ")")
+		.attr('class', 'x-axis');
+
+		// y axis
+	c_svg.append("g")
+		.call(d3.axisLeft(y_axis_scale))
+		.attr("transform", "translate(" + x_off + ",0)")
+		.attr('class', 'y-axis');
+
+	c_svg.append("text")
+		.attr("x", 425)
+		.attr("y", 50)
+		.attr("font-size", "18px")
+		.attr('text-anchor', 'middle')
+		.text('Generation');
+
+	c_svg.append("text")
+		.attr("x", 425)
+		.attr("y", 70)
+		.attr("font-size", "16px")
+		.attr('text-anchor', 'middle')
+		.text('1')
+		.attr('class', 'gen');
+
+	c_svg.append("text")
+		.attr("x", 500 / 2)
+		.attr("y", 25)
+		.attr("font-size", "16px")
+		.attr('text-anchor', 'middle')
+		.text("Uniform Lexicon")
+		.attr('class', 'lex-type');
+
+	function draw_initial(start_ent) {
+		c_svg.selectAll(".datum")
+			.data(start_ent)
+			.enter()
+			.append("circle")
+			.attr("cx", function(d) { return x_axis_scale(d.position); })
+			.attr("cy", function(d) { return y_axis_scale(d.mean); })
+			.attr("fill", function(d) { return info_type_scale(d.type); })
+			.attr("opacity", function(d) { return .75; } )
+			.attr("r", function(d) { return 10; } )
+			.attr('class', 'datum');
+	}
+
+	function clear_chart() {
+		c_svg.selectAll('.datum')
+			.remove();
+	}
+
+	function update_chart(new_ent, transition_len, n_step) {
+		c_svg.selectAll(".datum")
+			.data(new_ent)
+			.transition()
+			.duration(transition_len)
+			.delay(n_step * transition_len)
+			.attr("cx", function(d) { return x_axis_scale(d.position); })
+			.attr("cy", function(d) { return y_axis_scale(d.mean); });
+		}
+
+</script> 
+
+<button id = "calc-info" onclick="evol_iter()">Calculate Iterations</button>
+<button id = "animate" onclick="run_animation()"> Run Animation!</button> <br> 
+<button id = "reset-uniform" onclick="reset_lex_uniform()"> Reset (Uniform) </button> 
+<button id = "reset-randomized" onclick="reset_lex_randomized()"> Reset (Randomized) </button> 
+<br>
+Iterations to do: <input type="text" id="iter-to-do" size="10" value="100">
+<div id="spinning"></div>
+
+
+<script language="javascript">
+	//
+	var spin_svg = d3.select("#spinning")
+		.append("svg")
+		.attr("width", 200)
+		.attr("height", 100);
+
+	spin_svg.append("circle")
+		.attr("cx", 30)
+		.attr("cy", 40)
+		.attr("r", 30)
+		.attr("fill", "red");
+
+	//
+	var entropy_hist = [];
+	var gen_done = 1;
+	var lex = new_uniform_lex(
+			document.getElementById("lex-size").value,
+			+document.getElementById("word-len").value 
+			);
+	var seg_ent = summary_stats(segmental_information(lex));
+
+	draw_initial(seg_ent);
+	
+	// draw the legend
+	c_svg.append("g")
+  		.attr("class", "info-legend")
+  		.attr("transform", "translate(390,110)");
+
+	var legendOrdinal = d3.legendColor()
+  		.shape("circle", 3)
+  		.shapePadding(10)
+  		//use cellFilter to hide the "e" cell
+  		//.cellFilter(function(d){ return d.label !== "e" })
+  		.scale(info_type_scale);
+
+	c_svg.select(".info-legend")
+  		.call(legendOrdinal);
+
+	function evol_iter() {
+		var n = +document.getElementById("iter-to-do").value;
+		spin_svg.selectAll("circle")
+			.transition()
+			.duration(10)
+			.delay(5)
+			.attr("fill", "green");
+
+		entropy_hist = [];
+		for (var i = gen_done; i < n + gen_done; i++) {
+			lex = horizontal_shuffle(lex);
+			new_seg_ent = summary_stats(segmental_information(lex));
+			entropy_hist.push(new_seg_ent);
+			c_svg.selectAll('.gen')
+				.transition()
+				.duration(10)
+    			.text(i);
+		};
+		gen_done += n;
+		
+	};
+
+	function run_animation() {
+		for (var i = 0; i < entropy_hist.length; i++) {
+			new_ent = entropy_hist[i];
+			update_chart(new_ent, 20, i);
+		};
+		spin_svg.selectAll("circle")
+			.transition()
+			.attr("fill", "red");
+		
+	};
+
+	function reset_lex_uniform() {
+		entropy_hist = [];
+		gen_done = 1;
+				
+		// clear out the old circles
+		clear_chart();
+		// set up the new lexicon
+		lex = new_uniform_lex(
+			+document.getElementById("lex-size").value,
+			+document.getElementById("word-len").value 
+			);
+		seg_ent = summary_stats(segmental_information(lex));
+		
+		// reset the scales
+		// x
+		seg_max = +document.getElementById("word-len").value + 2;
+		x_axis_scale.domain([1,seg_max]);
+		c_svg.selectAll(".x-axis")
+			.transition()
+			.duration(100)
+			.call(d3.axisBottom(x_axis_scale).ticks(seg_max))
+		info_max = Math.ceil(d3.max(seg_ent, function(d) { return d.mean; })) + 4;
+		// y
+		y_axis_scale.domain([info_max, 0]);
+		c_svg.selectAll(".y-axis")
+			.transition()
+			.duration(100)
+			.call(d3.axisLeft(y_axis_scale))
+
+		// draw the circles in their initial positions
+		draw_initial(seg_ent);
+
+		c_svg.selectAll('.gen')
+			.transition()
+			.duration(10)
+    		.text(gen_done);
+    	c_svg.selectAll('.lex-type')
+    		.transition()
+    		.duration(10)
+    		.text('Uniform Initialization');
+
+    	// change the color of the "thinking" circle to red
+    	spin_svg.selectAll("circle")
+    		.transition()
+			.attr("fill", "red");
+
+	};
+
+	function reset_lex_randomized() {
+		entropy_hist = [];
+		gen_done = 1;
+				
+		// clear out the old circles
+		clear_chart();
+		// set up the new lexicon
+		lex = new_random_lex(
+			+document.getElementById("lex-size").value,
+			+document.getElementById("word-len").value,
+			+document.getElementById("nb-symbol").value 
+			);
+		seg_ent = summary_stats(segmental_information(lex));
+		
+		// reset the scales
+		// x
+		seg_max = d3.max(lex, function(d) { return d.length; }) + 2;
+		x_axis_scale.domain([1,seg_max]);
+		c_svg.selectAll(".x-axis")
+			.transition()
+			.duration(100)
+			.call(d3.axisBottom(x_axis_scale).ticks(seg_max))
+		info_max = Math.ceil(d3.max(seg_ent, function(d) { return d.mean; })) + 4;
+		// y
+		y_axis_scale.domain([info_max, 0]);
+		c_svg.selectAll(".y-axis")
+			.transition()
+			.duration(100)
+			.call(d3.axisLeft(y_axis_scale))
+
+		// draw the circles in their initial positions
+		draw_initial(seg_ent);
+
+		c_svg.selectAll('.gen')
+			.transition()
+			.duration(10)
+    		.text(gen_done);
+    	c_svg.selectAll('.lex-type')
+    		.transition()
+    		.duration(10)
+    		.text('Random Initialization');
+
+    	// change the color of the "thinking" circle to red
+    	spin_svg.selectAll("circle")
+    		.transition()
+			.attr("fill", "red");
+	};		
+	
+</script> 
+
+</body>
+</html>
